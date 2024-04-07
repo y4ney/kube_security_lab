@@ -1,96 +1,98 @@
-# Kubernetes Local Security Testing Lab
+# Kubernetes 本地安全测试实验环境
 
-The goal of this project is to make use of [Docker](https://www.docker.com) and specifically [kind](https://kind.sigs.k8s.io/) to create a lab environment for testing Kubernetes exploits and security tools entirely locally on a single machine without any requirement for remote resources or Virtual Machines being spun up.
+本项目可以利用 [Docker](https://www.docker.com) 和 [kind](https://kind.sigs.k8s.io/) 来在本地创建一个可以用于测试 Kubernetes 漏洞和安全工具的实验环境，而无需远程资源或启动虚拟机。
 
-To get the flexibility to set-up the various vulnerable clusters we're using [Ansible](https://www.ansible.com/) playbooks.
+为了更加灵活的设置各种易受攻击的集群，我们使用了 [Ansible](https://www.ansible.com/) playbooks
 
-If you want to get an idea of how this works and where to start, there's an episode of [rawkode live](https://www.youtube.com/watch?reload=9&v=Srd1qqxDReA&t=6s) where we go through it all. If you run into trouble while installing the Pre-Requisites, check out [this installation guide](https://www.youtube.com/watch?v=y9PbNDdtHGo) which walks you though installing all the dependencies.
+如果你想了解工作原理以及如何开始，请查看 [rawkode live](https://www.youtube.com/watch?reload=9&v=Srd1qqxDReA&t=6s) 节目。
 
-## Pre-requisites
+## 先决条件
 
-Before starting you'll need to install
+在开始之前，你需要安装：
 
 - Docker
 - Ansible
-  - Also install the docker python module (e.g. `pip install docker` or `pip3 install docker`)
-- Kind 0.11.0 - Install guide [here](https://kind.sigs.k8s.io/docs/user/quick-start/)
-  -  Note: due to breaking changes in Kind v0.11.0+, currently only Kind v0.11.0 is supported
-  -  You can check your version with `kind --version`
+  - 含需要安装 docker python 模块（例如 `pip install docker` 或 `pip3 install docker`）
+- Kind 0.11.0 - 安装指南在[这里](https://kind.sigs.k8s.io/docs/user/quick-start/)
+  - 注意：由于 Kind v0.11.0+ 的重大变更，目前只支持 Kind v0.11.0
+  - 您可以使用 kind --version 检查您的版本
 
-If you're running Ubuntu 18.04, you can use the `install_ansible_ubuntu.sh` file to do the ansible setup. If you're running Ubuntu 20.04 then you can just get ansible from apt.
+若安装先决条件时遇到问题，请查看[安装指南](https://www.youtube.com/watch?v=y9PbNDdtHGo)，它会引导你安装所有的依赖项。
 
-## Getting Started
+如果您使用的是 Ubuntu 18.04，可以使用 `install_ansible_ubuntu.sh` 文件来进行 ansible 设置。如果您使用的是 Ubuntu 20.04，则可以直接通过 apt 获取 ansible。
 
- 1. Start up the vulnerable cluster you want to use, from the list below. At the end of the playbook you'll get an IP address for the cluster.
- 2. Start the client machine container, and exec into a shell on it
- 3. For the SSH clusters (the playbooks start ssh-to-*) SSH into a pod on the cluster with `ssh -p 32001 sshuser@[Kubernetes Cluster IP]` and a password of `sshuser`
- 4. Attack away :)
+## 开始
 
-More detailed explanations below .
+1. 从下面的列表中启动您想使用的易受攻击的集群。在 playbook 的末尾，您将获得集群的 IP 地址。
+2. 启动客户机容器，并执行进入 shell
+3. 对于 SSH 集群（以 ssh-to-* 开头的playbooks）使用 `ssh -p 32001 sshuser@[Kubernetes Cluster IP]` 和密码 `sshuser` SSH 进入集群上的一个 pod
+4. 开始攻击 :)
 
-## Client Machine
+下面是更详细的解释。
 
-There's a client machine with tools for Kubernetes security testing which can be brought up with the `client-machine.yml` playbook. It's best to use this client machine for all CLI tasks when running the scenarios, so you don't accidentally pick up creds from the host, but remember to start the kind cluster before the client machine, or the Docker network to connect to, may not be available.
+## 客户机
+
+有一个带有 Kubernetes 安全测试工具的客户机，可以通过 [client-machine.yml](./client-machine.yml) 剧本启动。最好在运行场景时使用这个客户机进行所有的 CLI 任务，这样您就不会意外地从宿主机获取凭据，但记得在客户机之前启动 kind 集群，否则可能无法使用 Docker 网络进行连接。
 
 - `ansible-playbook client-machine.yml`
 
-Once you've run the playbook, you can connect to the client machine with:-
+运行完剧本后，您可以使用以下命令连接到客户端机器：
 
 `docker exec -it client /bin/bash`
 
-The machine should be on the `172.18.0.0/24` network with the kind clusters (as well as being on the Docker default bridge)
+客户机应该在带有 kind 集群的`172.18.0.0/24`网络上（以及在Docker默认桥上）
 
-## Vulnerable Clusters
+## 易受攻击的集群
 
-There's a number of playbooks which will bring up cluster's with a specific mis-configuration that can be exploited.
+有一些剧本会带来具有特定错误配置的集群，这些配置可能会被利用。
 
-- `etcd-noauth.yml` - ETCD Server available without authentication
-- `insecure-port.yml` - Kubernetes API Server Insecure Port available
-- `rwkubelet-noauth.yml` - Kubelet Read-Write Port available without authentication
-- `ssh-to-cluster-admin.yml` - Access to a running pod with a service account which has cluster-admin rights.
+- `etcd-noauth.yml` - ETCD 服务器可在无需认证的情况下访问
+- `insecure-port.yml` - Kubernetes API 服务器的不安全端口可用
+- `rwkubelet-noauth.yml` - Kubelet 读写端口可在无需认证的情况下访问
+- `ssh-to-cluster-admin.yml` - 访问一个运行中的 pod，该 pod 使用的服务账户具有集群管理员权限。
 - `ssh-to-create-daemonsets-hard.yml`
-- `ssh-to-create-pods-easy.yml` - Access to a running pod with a service account which has rights to manage pods.
-- `ssh-to-create-pods-hard.yml` - Access to a running pod with a service account which has rights to create pods.
+- `ssh-to-create-pods-easy.yml` - 访问一个运行中的 pod，该 pod 使用的服务账户具有管理 pod 的权限。
+- `ssh-to-create-pods-hard.yml` - 访问一个运行中的 pod，该 pod 使用的服务账户具有创建 pod 的权限。
 - `ssh-to-create-pods-multi-node.yaml`
-- `ssh-to-get-secrets.yml` - Access to a running pod with a service account which has cluster level rights to get secrets.
-- `ssrf-to-insecure-port.yml` - This cluster has a web application with an SSRF vulnerability in it, which can be exploited to target the insecure port.
-- `tiller-noauth.yml` - Tiller service configured without authentication.
-- `unauth-api-server.yml` - API Server with anonymous access possible to sensitive paths.
-- `unauth-kubernetes-dashboard.yml` - Cluster with the Kubernetes Dashboard installed and available without authentication.
-- `rokubelet.yml` - Exposed read only kubelet. This one doesn't have a compromise path ready (yet!)
+- `ssh-to-get-secrets.yml` - 访问一个运行中的 pod，该 pod 使用的服务账户具有在集群级别获取 secret 的权限。
+- `ssrf-to-insecure-port.yml` - 这个集群有一个带有 SSRF 漏洞的 web 应用，可以被利用来攻击不安全端口。
+- `tiller-noauth.yml` - 配置了无需认证的 Tiller 服务。
+- `unauth-api-server.yml` - API 服务器允许匿名访问敏感路径。
+- `unauth-kubernetes-dashboard.yml` - 安装了 Kubernetes Dashboard 并且可以无需认证就访问的集群。
+- `rokubelet.yml` - 暴露的只读 kubelet。这个还没有准备好（尚未！）的可攻击的路径。
 
-If you would like to choose a random scenario to test your skills, run the `get-random-scenario.sh` script from your project folder!
+如果您想选择一个随机场景来测试您的技能，请从项目文件夹中运行“get-random-scenario.sh”脚本！
 
-## Using the clusters
+## 使用集群
 
-Each of these can be used to try out various techniques for attacking Kubernetes clusters.  In general the goal of each exercise should be to get access to the `/etc/kubernetes/pki/ca.key` file as that's a ["golden key"](https://raesene.github.io/blog/2019/04/16/kubernetes-certificate-auth-golden-key/) to persistent cluster access.
+其中每一个都可用于尝试攻击Kubernetes集群的各种技术。一般来说，每个练习的目标应该是访问`/etc/kubernetes/pki/ca.key`文件，因为这是一个可以持久访问集群的[“金钥匙”](https://raesene.github.io/blog/2019/04/16/kubernetes-certificate-auth-golden-key/)
 
-For each cluster the place to start is in the `Scenario Setups` which has details of how to get started.  
+对于每个集群，开始的地方是在`Scenario Setups`中，其中包含如何开始的详细信息。
 
-If you want some information on one possible solution look in the `Scenario Walkthroughs` folder
+如果您想了解一些关于一个可能解决方案的信息，请查看`Scenario Walkthroughs`文件夹
 
-## Cleanup
+## 清理
 
-When you're finished with your cluster(s) just use:
+当您完成集群后，只需使用：
 
 ```bash
 kind get clusters
 ```
 
-To get a list of running clusters, then:
+要获取正在运行的集群列表，然后：
 
 ```bash
 kind delete cluster --name=[CLUSTERNAME]
 ```
 
-to remove the kind clusters, and:
+来删除 kind 集群，然后：
 
 ```bash
 docker stop client
 ```
 
-to remove the client container
+来删除客户端容器
 
-## Demo Setup
+## 演示设置
 
 There's a specific pair of playbooks which can be useful for demonstrating Kubernetes vulnerabilities.  the `demo-cluster.yml` brings up a kind cluster with multiple vulnerabilities and the `demo-client-machine.yml` brings up a client container with the Kubernetes Kubeconfig for the demo cluster already installed.  For this pair, it's important to bring up the cluster before the client machine, so that the kubeconfig file is available to be installed.

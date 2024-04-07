@@ -1,3 +1,7 @@
 ---
+  # 安装 python
   - name: Install Python
+    # raw 用于在目标主机上执行原始的 shell 命令。
+    # 不同于大多数 Ansible 模块，raw 不依赖 Python 的存在，
+    # 因此它适用于最小化环境或尚未配置 Python 的新机器。
     raw: apk update && apk add python3

@@ -1,25 +1,32 @@
 #!/usr/bin/env ansible-playbook
 ---
+# 启动一个kind 集群
 - name: Start up a kind cluster
   hosts: localhost
   vars:
+    # 集群名称
     cluster_name: insecureport
+    # 容器名称
     # This needs to be the cluster name with -control-plane added 
     container_name: insecureport-control-plane
     cluster_config: insecureport.yml
+    # kubernetes 的版本
     kubernetes_version: v1.18.2
 
   tasks:
   - import_tasks: ./ansible_tasks/setup_kind_custom_config.yaml
   
 
+# 设置集群                                             
 - name: Setup Cluster
   hosts: insecureport-control-plane
   connection: docker
   vars:
     ansible_python_interpreter: /usr/bin/python3
-    
+
   tasks:
+  # 设置 kubeconfig 文件
   - import_tasks: ./ansible_tasks/setup_kubeconfig.yml
+  # 打印集群的 IP 地址
   - import_tasks: ./ansible_tasks/print_cluster_ip.yml
   

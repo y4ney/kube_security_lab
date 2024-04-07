@@ -1,7 +1,10 @@
-## Insecure Port
+# 不安全端口
 
+1. 启动剧本
 
-- `ansible-playbook insecure-port.yml`
+  ```bash
+  ansible-playbook insecure-port.yml
+  ```
 
 Then get a note of the IP address of the Kubernetes cluster from the output of the ansible playbook or with 
 

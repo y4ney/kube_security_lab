@@ -1,4 +1,7 @@
 ---
+  # 使用 ansible 的 debug 模块来打印集群的 IP 地址
   - name: Print the Cluster IP address
     debug: 
+      # {{ ansible_default_ipv4.address }} 是一个 Ansible 内置变量，
+      # 用于获取执行任务的目标机器的默认 IPv4 地址。
       msg: "The Cluster IP address is {{ ansible_default_ipv4.address }} "

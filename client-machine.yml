@@ -1,32 +1,71 @@
 #!/usr/bin/env ansible-playbook
 ---
+# 安装一个带有 Kubernetes 安全测试工具的基于 alpine 的镜像
 - name: Start up an alpine containertools image
   hosts: localhost
-
-
   tasks:
+    # 使用 pip 模块安装 docker module
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/pip_module.html
     - name: Install docker module
+      # ansible 的剧本中涉及到了 docker 相关的操作，例如 docker_container 和 docker_network
+      # 所以我们需要提前使用 pip 安装 docker module，因为这些操作实际上都是在底层调用这个 SDK 来操作的
+      # docker 是 Docker SDK for Python 的一部分，允许 Python 程序与 Docker 的远程应用程序接口（API）进行交互。
       pip:
         name: docker
+    
+    # 使用 docker_network 模块创建 kind 网络
+    # https://docs.ansible.com/ansible/latest/collections/community/docker/docker_network_module.html
+    - name: Create a Docker network for kind
+      # 因为后续创建 docker 容器时，需要将容器加入名为 kind 的网络中
+      docker_network:
+        name: kind
+        state: present
+    
+    # 使用 docker_container 模块启动一个 docker 容器
+    # https://docs.ansible.com/ansible/latest/collections/community/docker/docker_container_module.html
     - name: Start up a docker container
       docker_container:
+        # 容器名
         name: client
+        # 镜像名
         image: raesene/alpine-containertools
+        # Yaney add：指定容器运行的平台
+        platform: linux/amd64
+        # 网络
         networks:
           - name: kind
-    - name: add the host
-      add_host: name=client
+    
+    # 使用 add_host 模块添加临时主机
+    # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/add_host_module.html
+    - name: Add the host
+      # 使用 add_host 可动态地将主机添加到 inventory 中，并且该主机仅在 playbook 的执行期间有效
+      # 主要为了在后续的操作中，可以连接到 docker 容器中进行操作。
+      add_host: 
+        name: client
 
-- name: install Python in the cluster
+# 在容器中安装 python 环境
+- name: install Python in the container
+  # 需要连接的主机
   hosts: client
+  # 使用 docker 连接插件
+  # https://docs.ansible.com/ansible/latest/plugins/connection.html
   connection: docker
+  # ansible 默认会收集目标主机的系统信息，禁用 facts 收集可以加快执行速度
+  # 这里设置为 no，主要是因为目标主机非常轻量级并且不需要这些信息
   gather_facts: no
   vars:
+    # 为了支持各种类 Unix 操作系统和发行版，Ansible 不能总是依赖现有环境或环境变量来定位正确的 Python 二进制文件。
+    # 默认情况下，模块指向 /usr/bin/python，因为这是最常见的位置。但这个路径可能会有所不同，
+    # 因此建议设置 Ansible 二进制文件的位置。
     ansible_python_interpreter: /usr/bin/python3
-
   tasks:
+  # 使用 import_tasks 模块在容器中安装 python 环境
+  # 大多数 Ansible 模块依赖于 Python 来在远程节点上执行其操作（例如 copy）。
+  # 为了使这些模块能够正常工作，目标机器（远程节点）上需要有 Python 环境。
+  # https://docs.ansible.com/ansible/latest/collections/ansible/builtin/import_tasks_module.html
   - import_tasks: ./ansible_tasks/install_python3_alpine_raw.yml
-  
+
+# 配置 client  
 - name: Configure the demo client
   hosts: client
   connection: docker
@@ -34,7 +73,11 @@
     ansible_python_interpreter: /usr/bin/python3
     
   tasks:
+  # 设置 bash 的提示词，将该项目的 client_files/clientbashrc 文件复制为容器的 /root/.bashrc 文件
   - name: Set the bash prompt
     copy:
+      # PS1 是 Bash 中的一个环境变量，用于定义命令提示符（即，命令行等待输入时显示的文本）。
+      # 通过在 .bashrc 文件中设置 PS1 变量的值，可以自定义提示符的外观，以满足个人喜好或特定的信息需求。
+      # 当 Bash 读取并执行 .bashrc 文件中的命令时，它会设置 PS1 的值，并在每次显示命令提示符时使用这个值。
       src: client_files/clientbashrc
       dest: /root/.bashrc
